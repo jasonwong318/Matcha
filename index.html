@@ -3,229 +3,647 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vibe Reconcile AI 一體化極速畫布</title>
+    <title>Matcha — 智慧對帳工具</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-</head>
-<body class="bg-gray-50 font-sans text-gray-800">
-
-    <nav class="bg-slate-950 text-white px-6 py-4 shadow-md flex justify-between items-center">
-        <div class="flex items-center space-x-3">
-            <div class="bg-blue-600 p-2 rounded-lg"><i data-lucide="zap" class="w-6 h-6"></i></div>
-            <div>
-                <h1 class="text-xl font-bold tracking-wide">Vibe Coding Lab</h1>
-                <p class="text-xs text-gray-400">Pure Client-Side AI Auditor (2026 Edition)</p>
-            </div>
-        </div>
-    </nav>
-
-    <main class="max-w-7xl mx-auto p-6 space-y-6">
-        
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 space-y-4">
-            <h2 class="text-lg font-bold flex items-center gap-2"><i data-lucide="sliders" class="text-blue-600"></i> 第一步：配置與數據輸入</h2>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">選擇 AI 模型</label>
-                    <select id="model-select" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
-                        <option value="gemini">Gemini 3.5 Flash</option>
-                        <option value="glm4">GLM-4-Flash (智譜AI)</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1" id="api-key-label">輸入 API Key</label>
-                    <input type="password" id="api-key" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm font-mono" placeholder="AI Studio 申請的 AIzaSy...">
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                <div class="border border-gray-200 p-4 rounded-lg bg-slate-50">
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">1. 上傳公司會計帳 (Excel / .xlsx)</label>
-                    <input type="file" id="file-ledger" accept=".xlsx, .xls, .csv" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                </div>
-                <div class="border border-gray-200 p-4 rounded-lg bg-slate-50">
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">2. 上傳銀行流水 (電子PDF / 照片皆可)</label>
-                    <input type="file" id="file-bank" accept=".pdf, .png, .jpg, .jpeg" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
-                </div>
-            </div>
-
-            <button onclick="startReconciliation()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl shadow transition flex items-center justify-center space-x-2">
-                <i data-lucide="play"></i>
-                <span>啟動 AI 智慧交叉核對</span>
-            </button>
-        </div>
-
-        <div id="result-zone" class="hidden space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                    <p class="text-sm text-gray-500 font-medium">對帳結果狀態</p>
-                    <p id="txt-status" class="text-2xl font-bold mt-2">-</p>
-                </div>
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                    <p class="text-sm text-gray-500 font-medium">AI 抓出異常筆數</p>
-                    <p id="txt-count" class="text-2xl font-bold mt-2">-</p>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div class="p-5 border-b border-gray-200 bg-slate-50 flex items-center space-x-2">
-                    <i data-lucide="alert-triangle" class="text-red-500"></i>
-                    <h3 class="font-bold text-lg text-slate-900" id="report-title">AI 兩方比對異常報告</h3>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-gray-100/70 text-gray-600 text-sm font-semibold border-b border-gray-200">
-                                <th class="px-6 py-3.5">交易日期</th>
-                                <th class="px-6 py-3.5">金額</th>
-                                <th class="px-6 py-3.5">摘要描述</th>
-                                <th class="px-6 py-3.5">來源</th>
-                                <th class="px-6 py-3.5 text-red-600" id="reason-header">AI 專家審計推測原因 (Reason)</th>
-                            </tr>
-                        </thead>
-                        <tbody id="report-table-body" class="divide-y divide-gray-200 text-sm"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </main>
-
     <script>
-        lucide.createIcons();
-        let excelTextData = "";
-
-        // 當上傳 Excel 時，前端直接解析成純文字
-        document.getElementById('file-ledger').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                const data = new Uint8Array(event.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
-                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                excelTextData = XLSX.utils.sheet_to_csv(firstSheet);
-                console.log("Excel 解析成功！");
-            };
-            reader.readAsArrayBuffer(file);
-        });
-
-        document.getElementById('model-select').addEventListener('change', function(e) {
-            const label = document.getElementById('api-key-label');
-            document.getElementById('api-key').value = '';
-            if (e.target.value === 'gemini') {
-                label.innerText = '輸入 Gemini API Key';
-                document.getElementById('api-key').placeholder = 'AI Studio 申請的 AIzaSy...';
-            } else {
-                label.innerText = '輸入智譜 (GLM) API Key';
-                document.getElementById('api-key').placeholder = '智譜開放平台申請的...';
-            }
-        });
-
-        // 核心對帳邏輯
-        async function startReconciliation() {
-            const apiKey = document.getElementById('api-key').value;
-            const bankFile = document.getElementById('file-bank').files[0];
-            
-            const model = document.getElementById('model-select').value;
-            if(!apiKey) return alert("請輸入 API Key");
-            if(!excelTextData) return alert("請先上傳 Excel 分類帳");
-            if(!bankFile) return alert("請上傳 PDF 或照片流水");
-
-            const modelName = model === 'gemini' ? 'Gemini 3.5 Flash' : 'GLM-4-Flash';
-            document.getElementById('report-title').innerText = `${modelName} AI 兩方比對異常報告`;
-            document.getElementById('reason-header').innerText = `${modelName} 專家審計推測原因 (Reason)`;
-
-            document.getElementById('result-zone').classList.remove('hidden');
-            const tbody = document.getElementById('report-table-body');
-            tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-12 text-center text-blue-600 font-medium"><i data-lucide="loader" class="animate-spin inline mr-2"></i>${modelName} 正在瘋狂讀取文件並進行對帳，請稍候約 10 秒...</td></tr>`;
-            lucide.createIcons();
-
-            try {
-                const reader = new FileReader();
-                const dataUrl = await new Promise((resolve, reject) => {
-                    reader.readAsDataURL(bankFile);
-                    reader.onload = () => resolve(reader.result);
-                    reader.onerror = reject;
-                });
-                const base64Data = dataUrl.split(',')[1];
-                let mimeType = bankFile.type || "application/pdf";
-
-                const promptText = `你是一位精通法證會計的審計專家。請幫我交叉比對兩份財務數據：\n1.【公司會計分類帳 (Excel)】:\n${excelTextData}\n2.【隨附的銀行流水文件】\n請找出所有無法匹配的孤立項目，並特別留意金額數字顛倒（Typo）手誤。請嚴格以繁體中文，並遵循以下 JSON 格式回傳，不要包含任何 markdown 標籤或 \`\`\`json 字眼：\n{\n  "status": "Discrepancy_Found",\n  "total_unmatched_count": 1,\n  "unmatched_items": [\n    {"date": "2026-05-20", "amount": -5000, "description": "ATM Cash", "source": "Bank", "reason": "說明文字"}\n  ]\n}`;
-
-                let rawJson;
-
-                if (model === 'gemini') {
-                    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`;
-                    const payload = {
-                        contents: [{
-                            parts: [
-                                { inlineData: { mimeType: mimeType, data: base64Data } },
-                                { text: promptText }
-                            ]
-                        }],
-                        generationConfig: { responseMimeType: "application/json" }
-                    };
-                    const res = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-                    const apiData = await res.json();
-                    rawJson = JSON.parse(apiData.candidates[0].content.parts[0].text.trim());
-                } else {
-                    const url = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
-                    const payload = {
-                        model: 'glm-4-flash',
-                        messages: [{
-                            role: 'user',
-                            content: [
-                                { type: 'image_url', image_url: { url: dataUrl } },
-                                { type: 'text', text: promptText }
-                            ]
-                        }],
-                        response_format: { type: 'json_object' }
-                    };
-                    const res = await fetch(url, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${apiKey}`
-                        },
-                        body: JSON.stringify(payload)
-                    });
-                    const apiData = await res.json();
-                    rawJson = JSON.parse(apiData.choices[0].message.content.trim());
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        cream: { 50: '#FAF9F6', 100: '#F2EDE6', 200: '#E6DDD1' },
+                        clay:  { 500: '#C96A3A', 600: '#B85A2C', 700: '#9E4D24' },
+                        warm:  { 900: '#1C1917', 800: '#292524', 700: '#44403C' }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'Consolas', 'monospace'],
+                    }
                 }
-
-                // 渲染前端 UI
-                document.getElementById('txt-status').innerText = rawJson.status === "Discrepancy_Found" ? "發現不匹配項目" : "數據完全吻合";
-                document.getElementById('txt-status').className = rawJson.status === "Discrepancy_Found" ? "text-2xl font-bold text-red-600 mt-2" : "text-2xl font-bold text-emerald-600 mt-2";
-                document.getElementById('txt-count').innerText = rawJson.total_unmatched_count + " 筆異常";
-                
-                tbody.innerHTML = "";
-                if(rawJson.unmatched_items.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-12 text-center text-emerald-600 font-medium">🎉 完美！兩方數據完全相符。</td></tr>`;
-                    return;
-                }
-
-                rawJson.unmatched_items.forEach(item => {
-                    const row = document.createElement('tr');
-                    row.className = "hover:bg-gray-50 transition";
-                    row.innerHTML = `
-                        <td class="px-6 py-4 font-mono text-gray-600">${item.date}</td>
-                        <td class="px-6 py-4 font-semibold text-slate-900">$${Number(item.amount).toLocaleString()}</td>
-                        <td class="px-6 py-4 text-gray-500">${item.description}</td>
-                        <td class="px-6 py-4"><span class="px-2.5 py-0.5 rounded text-xs font-semibold ${item.source === 'Bank' ? 'bg-blue-100 text-blue-800':'bg-indigo-100 text-indigo-800'}">${item.source}</span></td>
-                        <td class="px-6 py-4 text-gray-700 bg-red-50/30 font-medium border-l-2 border-red-400">${item.reason}</td>
-                    `;
-                    tbody.appendChild(row);
-                });
-                lucide.createIcons();
-
-            } catch (err) {
-                tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-12 text-center text-red-600 font-medium">❌ 執行失敗: ${err.message}。請確認您的 API Key 是否正確，以及上傳的文件是否有效。</td></tr>`;
             }
         }
     </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        body { background-color: #FAF9F6; }
+        .card { background: #fff; border: 1px solid #E6DDD1; border-radius: 12px; }
+        .btn-primary {
+            background: #C96A3A; color: #fff; font-weight: 600;
+            border-radius: 8px; transition: background .15s, transform .1s;
+        }
+        .btn-primary:hover { background: #B85A2C; }
+        .btn-primary:active { transform: scale(0.99); }
+        .btn-secondary {
+            background: #fff; color: #44403C; font-weight: 500;
+            border: 1px solid #D6CFC6; border-radius: 8px; transition: background .15s;
+        }
+        .btn-secondary:hover { background: #F2EDE6; }
+        input[type="text"], input[type="password"], select {
+            border: 1px solid #D6CFC6; border-radius: 8px; background: #fff;
+            transition: border-color .15s, box-shadow .15s;
+        }
+        input[type="text"]:focus, input[type="password"]:focus, select:focus {
+            outline: none; border-color: #C96A3A;
+            box-shadow: 0 0 0 3px rgba(201,106,58,.12);
+        }
+        .upload-zone {
+            border: 1.5px dashed #D6CFC6; border-radius: 10px; background: #FAF9F6;
+            transition: border-color .15s, background .15s;
+        }
+        .upload-zone.has-file { border-color: #C96A3A; background: #FDF4EF; }
+        .upload-zone:hover { border-color: #C96A3A; }
+        .status-pill {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 4px 12px; border-radius: 99px; font-size: 12px; font-weight: 600;
+        }
+        .pill-bank { background: #EFF6FF; color: #1D4ED8; }
+        .pill-ledger { background: #F3F0FF; color: #6D28D9; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spin { animation: spin .8s linear infinite; display: inline-block; }
+        .row-hover:hover { background: #FAF9F6; }
+        @media print {
+            nav, .no-print { display: none !important; }
+            body { background: white !important; }
+            .card { box-shadow: none !important; border: 1px solid #ccc !important; }
+            #result-zone { display: block !important; }
+            #input-section { display: none !important; }
+        }
+        .fade-in { animation: fadeIn .3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .key-saved-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            font-size: 11px; color: #059669; font-weight: 500;
+        }
+    </style>
+</head>
+<body class="font-sans text-warm-900 min-h-screen">
+
+    <!-- Navigation -->
+    <nav class="bg-warm-900 text-white px-6 py-4 shadow-lg flex justify-between items-center">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-clay-500 flex items-center justify-center flex-shrink-0">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+            </div>
+            <div>
+                <h1 class="text-base font-semibold tracking-tight leading-tight">Matcha</h1>
+                <p class="text-xs text-gray-400 leading-tight">AI 智慧銀行對帳工具</p>
+            </div>
+        </div>
+        <div class="text-xs text-gray-500 hidden sm:block">純前端運算 · 數據不上傳伺服器</div>
+    </nav>
+
+    <main class="max-w-4xl mx-auto px-4 py-8 space-y-6" id="input-section">
+
+        <!-- Hero text -->
+        <div class="text-center pt-2 pb-1">
+            <h2 class="text-2xl font-bold text-warm-900 tracking-tight">銀行帳目交叉核對</h2>
+            <p class="text-sm text-gray-500 mt-1.5">上傳會計分類帳與銀行流水，由 AI 自動找出差異及異常項目</p>
+        </div>
+
+        <!-- Step 1: AI Config -->
+        <div class="card p-6 space-y-5">
+            <div class="flex items-center gap-2 mb-1">
+                <span class="w-6 h-6 rounded-full bg-clay-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">1</span>
+                <h3 class="font-semibold text-warm-800">選擇 AI 模型及輸入金鑰</h3>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="space-y-1.5">
+                    <label class="block text-sm font-medium text-warm-700">AI 模型</label>
+                    <select id="model-select" class="w-full px-3 py-2.5 text-sm" onchange="onModelChange()">
+                        <option value="gemini">Gemini 2.0 Flash（Google）</option>
+                        <option value="glm4">GLM-4-Flash（智譜AI）</option>
+                    </select>
+                </div>
+                <div class="space-y-1.5">
+                    <div class="flex items-center justify-between">
+                        <label class="block text-sm font-medium text-warm-700" id="api-key-label">API 金鑰</label>
+                        <span class="key-saved-badge hidden" id="key-saved-badge">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            已儲存
+                        </span>
+                    </div>
+                    <div class="relative">
+                        <input type="password" id="api-key"
+                            class="w-full px-3 py-2.5 text-sm font-mono pr-10"
+                            placeholder="貼上您的 API 金鑰…"
+                            oninput="onApiKeyInput()">
+                        <button onclick="toggleKeyVisibility()" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" title="顯示/隱藏">
+                            <i data-lucide="eye" class="w-4 h-4" id="eye-icon"></i>
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-400" id="api-key-hint">金鑰儲存於本機瀏覽器，不會傳至任何伺服器</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: File Upload -->
+        <div class="card p-6 space-y-4">
+            <div class="flex items-center gap-2 mb-1">
+                <span class="w-6 h-6 rounded-full bg-clay-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">2</span>
+                <h3 class="font-semibold text-warm-800">上傳文件</h3>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <!-- Ledger upload -->
+                <div class="upload-zone p-5 cursor-pointer relative" id="ledger-zone" onclick="document.getElementById('file-ledger').click()">
+                    <input type="file" id="file-ledger" accept=".xlsx,.xls,.csv" class="hidden" onchange="onLedgerUpload(event)">
+                    <div class="flex flex-col items-center gap-2 text-center" id="ledger-placeholder">
+                        <div class="w-10 h-10 rounded-lg bg-violet-50 flex items-center justify-center">
+                            <i data-lucide="table-2" class="w-5 h-5 text-violet-500"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-warm-800">會計分類帳</p>
+                            <p class="text-xs text-gray-400 mt-0.5">.xlsx · .xls · .csv</p>
+                        </div>
+                    </div>
+                    <div class="hidden flex-col items-center gap-2 text-center" id="ledger-info">
+                        <div class="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
+                            <i data-lucide="check-circle" class="w-5 h-5 text-green-500"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-warm-800" id="ledger-name">—</p>
+                            <p class="text-xs text-gray-400 mt-0.5" id="ledger-rows">讀取中…</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bank statement upload -->
+                <div class="upload-zone p-5 cursor-pointer relative" id="bank-zone" onclick="document.getElementById('file-bank').click()">
+                    <input type="file" id="file-bank" accept=".pdf,.png,.jpg,.jpeg" class="hidden" onchange="onBankUpload(event)">
+                    <div class="flex flex-col items-center gap-2 text-center" id="bank-placeholder">
+                        <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                            <i data-lucide="file-text" class="w-5 h-5 text-blue-500"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-warm-800">銀行流水</p>
+                            <p class="text-xs text-gray-400 mt-0.5">PDF · PNG · JPG · JPEG</p>
+                        </div>
+                    </div>
+                    <div class="hidden flex-col items-center gap-2 text-center" id="bank-info">
+                        <div class="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
+                            <i data-lucide="check-circle" class="w-5 h-5 text-green-500"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-warm-800" id="bank-name">—</p>
+                            <p class="text-xs text-gray-400 mt-0.5" id="bank-size">—</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Warning: PDF limitation -->
+            <div class="hidden bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-xs text-amber-800 flex gap-2" id="pdf-warning">
+                <i data-lucide="alert-triangle" class="w-4 h-4 flex-shrink-0 mt-0.5"></i>
+                <span>上傳了 PDF 檔案。部分 AI 模型對 PDF 的視覺理解能力有限，建議將銀行流水轉換為圖片格式（PNG/JPG）以獲得最佳效果。</span>
+            </div>
+        </div>
+
+        <!-- Run button -->
+        <button onclick="startReconciliation()" class="btn-primary w-full py-3.5 px-4 flex items-center justify-center gap-2 text-sm">
+            <i data-lucide="scan-search" class="w-4 h-4"></i>
+            <span>開始 AI 智慧對帳</span>
+        </button>
+    </main>
+
+    <!-- Results -->
+    <div id="result-zone" class="hidden max-w-4xl mx-auto px-4 pb-12 space-y-5 fade-in">
+
+        <!-- Summary cards -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div class="card p-5">
+                <p class="text-xs font-medium text-gray-400 uppercase tracking-wide">對帳狀態</p>
+                <p id="txt-status" class="text-xl font-bold mt-2 leading-tight">—</p>
+            </div>
+            <div class="card p-5">
+                <p class="text-xs font-medium text-gray-400 uppercase tracking-wide">異常筆數</p>
+                <p id="txt-count" class="text-xl font-bold mt-2 text-warm-900">—</p>
+            </div>
+            <div class="card p-5 col-span-2 sm:col-span-1 flex flex-col justify-between">
+                <p class="text-xs font-medium text-gray-400 uppercase tracking-wide">使用模型</p>
+                <p id="txt-model" class="text-sm font-semibold mt-2 text-warm-900">—</p>
+            </div>
+        </div>
+
+        <!-- Report table -->
+        <div class="card overflow-hidden">
+            <div class="px-6 py-4 border-b border-cream-200 bg-cream-50 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="git-compare-arrows" class="w-4 h-4 text-clay-500"></i>
+                    <h3 class="font-semibold text-warm-800" id="report-title">對帳差異報告</h3>
+                </div>
+                <div class="flex items-center gap-2 no-print">
+                    <button onclick="exportToExcel()" class="btn-secondary px-3 py-1.5 text-xs flex items-center gap-1.5">
+                        <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i>
+                        匯出 Excel
+                    </button>
+                    <button onclick="exportToPDF()" class="btn-secondary px-3 py-1.5 text-xs flex items-center gap-1.5">
+                        <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+                        列印 / PDF
+                    </button>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead>
+                        <tr class="bg-cream-50 text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-cream-200">
+                            <th class="px-5 py-3.5">日期</th>
+                            <th class="px-5 py-3.5">金額</th>
+                            <th class="px-5 py-3.5">描述</th>
+                            <th class="px-5 py-3.5">來源</th>
+                            <th class="px-5 py-3.5" id="reason-header">AI 分析原因</th>
+                        </tr>
+                    </thead>
+                    <tbody id="report-table-body" class="divide-y divide-cream-100"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Run again -->
+        <button onclick="resetUI()" class="btn-secondary w-full py-2.5 text-sm flex items-center justify-center gap-2 no-print">
+            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+            重新對帳
+        </button>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        // ── State ──────────────────────────────────────────────────────
+        let excelTextData = "";
+        let currentResults = null;
+        let keyVisible = false;
+
+        const MODEL_META = {
+            gemini: {
+                label: 'Gemini 2.0 Flash',
+                keyLabel: 'Google AI Studio API 金鑰',
+                placeholder: 'AIzaSy…',
+                hint: '前往 aistudio.google.com 申請免費金鑰',
+            },
+            glm4: {
+                label: 'GLM-4-Flash（智譜AI）',
+                keyLabel: '智譜 API 金鑰',
+                placeholder: '智譜開放平台申請的金鑰…',
+                hint: '前往 open.bigmodel.cn 申請金鑰',
+            },
+        };
+
+        // ── Init ───────────────────────────────────────────────────────
+        window.addEventListener('DOMContentLoaded', () => {
+            loadApiKey('gemini');
+        });
+
+        // ── API Key persistence ────────────────────────────────────────
+        function onApiKeyInput() {
+            const model = document.getElementById('model-select').value;
+            const key = document.getElementById('api-key').value.trim();
+            if (key) {
+                localStorage.setItem(`matcha_key_${model}`, key);
+                document.getElementById('key-saved-badge').classList.remove('hidden');
+            } else {
+                localStorage.removeItem(`matcha_key_${model}`);
+                document.getElementById('key-saved-badge').classList.add('hidden');
+            }
+        }
+
+        function loadApiKey(model) {
+            const saved = localStorage.getItem(`matcha_key_${model}`);
+            const input = document.getElementById('api-key');
+            input.value = saved || '';
+            document.getElementById('key-saved-badge').classList.toggle('hidden', !saved);
+        }
+
+        function onModelChange() {
+            const model = document.getElementById('model-select').value;
+            const meta = MODEL_META[model];
+            document.getElementById('api-key-label').textContent = meta.keyLabel;
+            document.getElementById('api-key').placeholder = meta.placeholder;
+            document.getElementById('api-key-hint').textContent = meta.hint;
+            loadApiKey(model);
+        }
+
+        function toggleKeyVisibility() {
+            keyVisible = !keyVisible;
+            const input = document.getElementById('api-key');
+            input.type = keyVisible ? 'text' : 'password';
+            document.getElementById('eye-icon').setAttribute('data-lucide', keyVisible ? 'eye-off' : 'eye');
+            lucide.createIcons();
+        }
+
+        // ── File upload handlers ───────────────────────────────────────
+        function onLedgerUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const data = new Uint8Array(event.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                excelTextData = XLSX.utils.sheet_to_csv(firstSheet);
+                const rows = excelTextData.split('\n').filter(r => r.trim()).length;
+                document.getElementById('ledger-placeholder').classList.add('hidden');
+                document.getElementById('ledger-info').classList.remove('hidden');
+                document.getElementById('ledger-info').classList.add('flex');
+                document.getElementById('ledger-name').textContent = file.name;
+                document.getElementById('ledger-rows').textContent = `${rows} 行資料`;
+                document.getElementById('ledger-zone').classList.add('has-file');
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function onBankUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            document.getElementById('bank-placeholder').classList.add('hidden');
+            document.getElementById('bank-info').classList.remove('hidden');
+            document.getElementById('bank-info').classList.add('flex');
+            document.getElementById('bank-name').textContent = file.name;
+            document.getElementById('bank-size').textContent = formatBytes(file.size);
+            document.getElementById('bank-zone').classList.add('has-file');
+            const isPdf = file.type === 'application/pdf' || file.name.endsWith('.pdf');
+            document.getElementById('pdf-warning').classList.toggle('hidden', !isPdf);
+            lucide.createIcons();
+        }
+
+        function formatBytes(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        // ── Reconciliation ────────────────────────────────────────────
+        async function startReconciliation() {
+            const model = document.getElementById('model-select').value;
+            const apiKey = document.getElementById('api-key').value.trim();
+            const bankFile = document.getElementById('file-bank').files[0];
+
+            if (!apiKey) return showAlert('請先輸入 API 金鑰');
+            if (!excelTextData) return showAlert('請先上傳會計分類帳（Excel）');
+            if (!bankFile) return showAlert('請先上傳銀行流水（PDF 或圖片）');
+
+            const modelLabel = MODEL_META[model].label;
+            document.getElementById('txt-model').textContent = modelLabel;
+            document.getElementById('report-title').textContent = '對帳差異報告';
+            document.getElementById('reason-header').textContent = `${modelLabel} 分析原因`;
+
+            // Switch to result view
+            document.getElementById('input-section').classList.add('hidden');
+            const resultZone = document.getElementById('result-zone');
+            resultZone.classList.remove('hidden');
+
+            const tbody = document.getElementById('report-table-body');
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="px-6 py-14 text-center">
+                        <div class="flex flex-col items-center gap-3 text-gray-500">
+                            <svg class="spin w-6 h-6 text-clay-500" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                            </svg>
+                            <span class="text-sm">${modelLabel} 正在讀取文件並進行交叉核對，請稍候…</span>
+                        </div>
+                    </td>
+                </tr>`;
+
+            try {
+                // Read bank file as base64
+                const dataUrl = await readFileAsDataURL(bankFile);
+                const base64Data = dataUrl.split(',')[1];
+                const mimeType = bankFile.type || 'application/pdf';
+
+                const prompt = buildPrompt(excelTextData);
+                let rawJson;
+
+                if (model === 'gemini') {
+                    rawJson = await callGemini(apiKey, mimeType, base64Data, prompt);
+                } else {
+                    rawJson = await callGLM(apiKey, dataUrl, prompt);
+                }
+
+                currentResults = rawJson;
+                renderResults(rawJson, modelLabel);
+
+            } catch (err) {
+                currentResults = null;
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center">
+                            <div class="flex flex-col items-center gap-2">
+                                <i data-lucide="alert-circle" class="w-6 h-6 text-red-400"></i>
+                                <p class="text-sm font-medium text-red-600">執行失敗</p>
+                                <p class="text-xs text-gray-500 max-w-sm">${err.message}</p>
+                                <p class="text-xs text-gray-400 mt-1">請確認 API 金鑰正確，以及上傳的文件格式有效。</p>
+                            </div>
+                        </td>
+                    </tr>`;
+                lucide.createIcons();
+            }
+        }
+
+        function buildPrompt(ledgerCsv) {
+            return `你是一位精通法證會計的審計專家。請幫我交叉比對兩份財務數據：
+
+1.【公司會計分類帳（Excel 轉 CSV）】:
+${ledgerCsv}
+
+2.【隨附的銀行流水文件（圖片或 PDF）】
+
+請找出所有無法匹配的孤立項目，並特別留意：
+- 金額數字顛倒或輸入錯誤（Typo）
+- 同金額但描述不符的項目
+- 僅在單方出現的交易
+
+請嚴格以繁體中文回覆，並遵循以下 JSON 格式輸出，不要包含任何 markdown 標籤或 \`\`\`json 字眼：
+{
+  "status": "Discrepancy_Found",
+  "total_unmatched_count": 1,
+  "unmatched_items": [
+    {"date": "2026-05-20", "amount": -5000, "description": "ATM 提款", "source": "Bank", "reason": "此筆交易只出現在銀行流水，分類帳中找不到對應記錄。"}
+  ]
+}
+
+若兩方完全相符，則回傳：
+{"status": "Data_Matches", "total_unmatched_count": 0, "unmatched_items": []}`;
+        }
+
+        async function callGemini(apiKey, mimeType, base64Data, prompt) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+            const payload = {
+                contents: [{ parts: [
+                    { inlineData: { mimeType, data: base64Data } },
+                    { text: prompt }
+                ]}],
+                generationConfig: { responseMimeType: 'application/json' }
+            };
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err?.error?.message || `Gemini API 錯誤 (${res.status})`);
+            }
+            const data = await res.json();
+            return parseJsonSafe(data.candidates[0].content.parts[0].text);
+        }
+
+        async function callGLM(apiKey, dataUrl, prompt) {
+            const url = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
+            const payload = {
+                model: 'glm-4-flash',
+                messages: [{ role: 'user', content: [
+                    { type: 'image_url', image_url: { url: dataUrl } },
+                    { type: 'text', text: prompt }
+                ]}],
+                response_format: { type: 'json_object' }
+            };
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err?.error?.message || `GLM API 錯誤 (${res.status})`);
+            }
+            const data = await res.json();
+            return parseJsonSafe(data.choices[0].message.content);
+        }
+
+        function parseJsonSafe(text) {
+            text = text.trim();
+            // Strip markdown code fences if present
+            text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '');
+            return JSON.parse(text);
+        }
+
+        function readFileAsDataURL(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // ── Render ────────────────────────────────────────────────────
+        function renderResults(data, modelLabel) {
+            const isMatch = data.status === 'Data_Matches' || data.total_unmatched_count === 0;
+
+            const statusEl = document.getElementById('txt-status');
+            if (isMatch) {
+                statusEl.textContent = '完全吻合';
+                statusEl.className = 'text-xl font-bold mt-2 text-emerald-600';
+            } else {
+                statusEl.textContent = '發現差異';
+                statusEl.className = 'text-xl font-bold mt-2 text-red-600';
+            }
+
+            document.getElementById('txt-count').textContent =
+                isMatch ? '0 筆' : `${data.total_unmatched_count} 筆異常`;
+
+            const tbody = document.getElementById('report-table-body');
+            tbody.innerHTML = '';
+
+            if (!data.unmatched_items || data.unmatched_items.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="px-6 py-14 text-center">
+                            <div class="flex flex-col items-center gap-2 text-emerald-600">
+                                <i data-lucide="check-circle-2" class="w-8 h-8"></i>
+                                <p class="font-semibold">兩方數據完全相符</p>
+                                <p class="text-xs text-gray-400">未發現任何差異項目</p>
+                            </div>
+                        </td>
+                    </tr>`;
+                lucide.createIcons();
+                return;
+            }
+
+            data.unmatched_items.forEach((item, i) => {
+                const isBank = item.source === 'Bank';
+                const amt = Number(item.amount);
+                const amtClass = amt < 0 ? 'text-red-600' : 'text-emerald-600';
+                const amtStr = (amt < 0 ? '−' : '+') + '$' + Math.abs(amt).toLocaleString();
+                const row = document.createElement('tr');
+                row.className = 'row-hover transition-colors';
+                row.innerHTML = `
+                    <td class="px-5 py-4 font-mono text-xs text-gray-500 whitespace-nowrap">${item.date || '—'}</td>
+                    <td class="px-5 py-4 font-semibold ${amtClass} whitespace-nowrap">${amtStr}</td>
+                    <td class="px-5 py-4 text-gray-700 max-w-xs">${item.description || '—'}</td>
+                    <td class="px-5 py-4">
+                        <span class="status-pill ${isBank ? 'pill-bank' : 'pill-ledger'}">
+                            ${isBank ? '銀行流水' : '分類帳'}
+                        </span>
+                    </td>
+                    <td class="px-5 py-4 text-gray-600 text-xs leading-relaxed border-l-2 border-clay-500/30 bg-amber-50/40">${item.reason || '—'}</td>
+                `;
+                tbody.appendChild(row);
+            });
+            lucide.createIcons();
+        }
+
+        // ── Export ────────────────────────────────────────────────────
+        function exportToExcel() {
+            if (!currentResults) return showAlert('尚無對帳結果可匯出');
+            const items = currentResults.unmatched_items || [];
+            const rows = items.map(it => ({
+                '交易日期': it.date || '',
+                '金額': it.amount,
+                '描述': it.description || '',
+                '來源': it.source === 'Bank' ? '銀行流水' : '分類帳',
+                'AI 分析原因': it.reason || '',
+            }));
+            if (rows.length === 0) {
+                rows.push({ '交易日期': '—', '金額': 0, '描述': '兩方數據完全相符，無異常項目', '來源': '—', 'AI 分析原因': '—' });
+            }
+            const ws = XLSX.utils.json_to_sheet(rows);
+            ws['!cols'] = [{ wch: 14 }, { wch: 14 }, { wch: 30 }, { wch: 12 }, { wch: 50 }];
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '對帳報告');
+            const date = new Date().toISOString().slice(0, 10);
+            XLSX.writeFile(wb, `Matcha_對帳報告_${date}.xlsx`);
+        }
+
+        function exportToPDF() {
+            if (!currentResults) return showAlert('尚無對帳結果可匯出');
+            window.print();
+        }
+
+        // ── UI helpers ────────────────────────────────────────────────
+        function resetUI() {
+            document.getElementById('result-zone').classList.add('hidden');
+            document.getElementById('input-section').classList.remove('hidden');
+        }
+
+        function showAlert(msg) {
+            // Graceful toast instead of browser alert
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 bg-warm-900 text-white text-sm px-5 py-3 rounded-xl shadow-xl z-50 flex items-center gap-2';
+            toast.innerHTML = `<svg class="w-4 h-4 text-amber-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg><span>${msg}</span>`;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3500);
+        }
+    </script>
+
+    <!-- Print styles -->
+    <style>
+        @media print {
+            nav, .no-print, #input-section, button { display: none !important; }
+            body { background: white !important; font-size: 11pt; }
+            .card { box-shadow: none !important; border: 1px solid #ddd !important; break-inside: avoid; }
+            #result-zone { display: block !important; padding: 0 !important; }
+            table { font-size: 9pt; }
+            th, td { padding: 6px 10px !important; }
+            .status-pill { border: 1px solid currentColor; }
+        }
+    </style>
 </body>
 </html>
