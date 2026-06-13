@@ -255,6 +255,18 @@
             </div>
         </div>
 
+        <!-- Consolidated matches section -->
+        <div id="consolidated-zone" class="hidden card overflow-hidden fade-in">
+            <div class="px-6 py-4 border-b border-cream-200 bg-amber-50 flex items-center gap-2">
+                <svg class="w-4 h-4 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-6l-2 2m4-2l2 2M3 3l18 18M10.5 6H19a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h.5"/><path stroke-linecap="round" stroke-linejoin="round" d="M3 9h4m0 6h10"/></svg>
+                <div>
+                    <h3 class="font-semibold text-amber-900 text-sm">疑似合併入帳項目</h3>
+                    <p class="text-xs text-amber-700 mt-0.5">以下差異可能是因為會計合併入帳所致——多筆交易加總後與另一方吻合</p>
+                </div>
+            </div>
+            <div id="consolidated-list" class="divide-y divide-cream-100 p-4 space-y-0"></div>
+        </div>
+
         <!-- Run again -->
         <button onclick="resetUI()" class="btn-secondary w-full py-2.5 text-sm flex items-center justify-center gap-2 no-print">
             <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
@@ -442,29 +454,48 @@
         }
 
         function buildPrompt(ledgerCsv) {
-            return `你是一位精通法證會計的審計專家。請幫我交叉比對兩份財務數據：
+            return `你是一位精通法證會計的審計專家。請幫我分兩個步驟交叉比對兩份財務數據：
 
 1.【公司會計分類帳（Excel 轉 CSV）】:
 ${ledgerCsv}
 
 2.【隨附的銀行流水文件（圖片或 PDF）】
 
-請找出所有無法匹配的孤立項目，並特別留意：
+【第一步：找出差異項目】
+找出所有無法一對一匹配的孤立項目，特別留意：
 - 金額數字顛倒或輸入錯誤（Typo）
 - 同金額但描述不符的項目
 - 僅在單方出現的交易
 
+【第二步：嘗試識別合併入帳】
+針對第一步找到的差異項目，進一步嘗試判斷：是否有多筆銀行流水交易（例如：多筆利息、多筆手續費、多筆同類收付款）加總後，等於分類帳中的某一筆合計記錄？或反之，分類帳多筆細項加總後等於銀行流水的一筆？
+這種情況在會計實務中很常見（例如：銀行逐日入利息，但會計按月合計入帳）。
+若發現此類情況，請在 consolidated_matches 中列出，並說明哪幾筆加總後與哪一筆相符。
+
 請嚴格以繁體中文回覆，並遵循以下 JSON 格式輸出，不要包含任何 markdown 標籤或 \`\`\`json 字眼：
 {
   "status": "Discrepancy_Found",
-  "total_unmatched_count": 1,
+  "total_unmatched_count": 2,
   "unmatched_items": [
     {"date": "2026-05-20", "amount": -5000, "description": "ATM 提款", "source": "Bank", "reason": "此筆交易只出現在銀行流水，分類帳中找不到對應記錄。"}
+  ],
+  "consolidated_matches": [
+    {
+      "match_type": "many_bank_to_one_ledger",
+      "single_entry": {"date": "2026-05-31", "amount": 1500, "description": "利息收入合計", "source": "Ledger"},
+      "group_entries": [
+        {"date": "2026-05-15", "amount": 800, "description": "定期利息", "source": "Bank"},
+        {"date": "2026-05-28", "amount": 700, "description": "活期利息", "source": "Bank"}
+      ],
+      "group_total": 1500,
+      "sum_matches": true,
+      "explanation": "分類帳一筆 $1,500 利息收入，對應銀行流水兩筆利息（$800 + $700 = $1,500）合計吻合，疑為會計按月合併入帳。"
+    }
   ]
 }
 
-若兩方完全相符，則回傳：
-{"status": "Data_Matches", "total_unmatched_count": 0, "unmatched_items": []}`;
+若沒有發現合併入帳情況，consolidated_matches 回傳空陣列 []。
+若兩方完全相符，則回傳：{"status": "Data_Matches", "total_unmatched_count": 0, "unmatched_items": [], "consolidated_matches": []}`;
         }
 
         async function callGemini(apiKey, mimeType, base64Data, prompt) {
@@ -557,6 +588,7 @@ ${ledgerCsv}
             tbody.innerHTML = '';
 
             if (!data.unmatched_items || data.unmatched_items.length === 0) {
+                renderConsolidated([]);
                 tbody.innerHTML = `
                     <tr>
                         <td colspan="5" class="px-6 py-14 text-center">
@@ -570,6 +602,8 @@ ${ledgerCsv}
                 lucide.createIcons();
                 return;
             }
+
+            renderConsolidated(data.consolidated_matches || []);
 
             data.unmatched_items.forEach(item => {
                 const isBank = item.source === 'Bank';
@@ -597,6 +631,69 @@ ${ledgerCsv}
             lucide.createIcons();
         }
 
+        // ── Consolidated matches renderer ─────────────────────────────
+        function renderConsolidated(matches) {
+            const zone = document.getElementById('consolidated-zone');
+            const list = document.getElementById('consolidated-list');
+            list.innerHTML = '';
+
+            if (!matches || matches.length === 0) {
+                zone.classList.add('hidden');
+                return;
+            }
+
+            zone.classList.remove('hidden');
+
+            matches.forEach((m, idx) => {
+                const isBankGroup = m.match_type === 'many_bank_to_one_ledger';
+                const singleLabel = isBankGroup ? '分類帳（單筆）' : '銀行流水（單筆）';
+                const groupLabel  = isBankGroup ? '銀行流水（多筆加總）' : '分類帳（多筆加總）';
+                const matchBadge  = m.sum_matches
+                    ? `<span class="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full"><svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>加總吻合</span>`
+                    : `<span class="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">加總接近</span>`;
+
+                const groupRows = (m.group_entries || []).map(e => {
+                    const a = Number(String(e.amount).replace(/[^0-9.\-]/g, ''));
+                    return `<div class="flex items-center gap-2 text-xs text-gray-600 py-1">
+                        <span class="font-mono text-gray-400 w-24 flex-shrink-0">${escapeHtml(e.date)}</span>
+                        <span class="font-semibold ${a < 0 ? 'text-red-500' : 'text-emerald-600'}">${isNaN(a) ? escapeHtml(e.amount) : (a<0?'−':'+')+' $'+Math.abs(a).toLocaleString()}</span>
+                        <span>${escapeHtml(e.description)}</span>
+                    </div>`;
+                }).join('');
+
+                const single = m.single_entry || {};
+                const sa = Number(String(single.amount).replace(/[^0-9.\-]/g, ''));
+                const singleAmt = isNaN(sa) ? escapeHtml(single.amount) : (sa<0?'−':'+')+' $'+Math.abs(sa).toLocaleString();
+
+                list.innerHTML += `
+                <div class="py-4 ${idx > 0 ? 'border-t border-cream-100' : ''}">
+                    <div class="flex items-start justify-between gap-3 mb-3">
+                        <p class="text-sm text-gray-700 leading-relaxed flex-1">${escapeHtml(m.explanation)}</p>
+                        ${matchBadge}
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div class="bg-violet-50/60 rounded-lg p-3 border border-violet-100">
+                            <p class="text-xs font-semibold text-violet-700 mb-2">${singleLabel}</p>
+                            <div class="flex items-center gap-2 text-xs text-gray-600">
+                                <span class="font-mono text-gray-400 flex-shrink-0">${escapeHtml(single.date)}</span>
+                                <span class="font-bold text-slate-800">${singleAmt}</span>
+                                <span>${escapeHtml(single.description)}</span>
+                            </div>
+                        </div>
+                        <div class="bg-blue-50/60 rounded-lg p-3 border border-blue-100">
+                            <p class="text-xs font-semibold text-blue-700 mb-1">${groupLabel}</p>
+                            ${groupRows}
+                            <div class="border-t border-blue-100 mt-1 pt-1 flex items-center gap-2 text-xs font-bold text-blue-800">
+                                <span>合計</span>
+                                <span>$${Number(String(m.group_total).replace(/[^0-9.\-]/g,'')).toLocaleString()}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            });
+            lucide.createIcons();
+        }
+
         // ── Export ────────────────────────────────────────────────────
         function exportToExcel() {
             if (!currentResults) return showAlert('尚無對帳結果可匯出');
@@ -614,7 +711,41 @@ ${ledgerCsv}
             const ws = XLSX.utils.json_to_sheet(rows);
             ws['!cols'] = [{ wch: 14 }, { wch: 14 }, { wch: 30 }, { wch: 12 }, { wch: 50 }];
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, '對帳報告');
+            XLSX.utils.book_append_sheet(wb, ws, '差異項目');
+
+            // Sheet 2: consolidated matches
+            const cMatches = currentResults.consolidated_matches || [];
+            if (cMatches.length > 0) {
+                const cRows = [];
+                cMatches.forEach((m, i) => {
+                    const s = m.single_entry || {};
+                    cRows.push({
+                        '組別': `合併組 ${i + 1}`,
+                        '角色': s.source === 'Bank' ? '銀行流水（單筆）' : '分類帳（單筆）',
+                        '日期': s.date || '',
+                        '金額': s.amount,
+                        '描述': s.description || '',
+                        '加總吻合': m.sum_matches ? '是' : '接近',
+                        '說明': m.explanation || '',
+                    });
+                    (m.group_entries || []).forEach(e => {
+                        cRows.push({
+                            '組別': `合併組 ${i + 1}`,
+                            '角色': e.source === 'Bank' ? '銀行流水（細項）' : '分類帳（細項）',
+                            '日期': e.date || '',
+                            '金額': e.amount,
+                            '描述': e.description || '',
+                            '加總吻合': '',
+                            '說明': '',
+                        });
+                    });
+                    cRows.push({ '組別': `合併組 ${i + 1} 合計`, '角色': '', '日期': '', '金額': m.group_total, '描述': '', '加總吻合': '', '說明': '' });
+                });
+                const ws2 = XLSX.utils.json_to_sheet(cRows);
+                ws2['!cols'] = [{ wch: 14 }, { wch: 18 }, { wch: 14 }, { wch: 12 }, { wch: 30 }, { wch: 10 }, { wch: 50 }];
+                XLSX.utils.book_append_sheet(wb, ws2, '疑似合併入帳');
+            }
+
             const date = new Date().toISOString().slice(0, 10);
             XLSX.writeFile(wb, `Matcha_對帳報告_${date}.xlsx`);
         }
