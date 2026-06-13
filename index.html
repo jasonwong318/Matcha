@@ -63,13 +63,6 @@
         @keyframes spin { to { transform: rotate(360deg); } }
         .spin { animation: spin .8s linear infinite; display: inline-block; }
         .row-hover:hover { background: #FAF9F6; }
-        @media print {
-            nav, .no-print { display: none !important; }
-            body { background: white !important; }
-            .card { box-shadow: none !important; border: 1px solid #ccc !important; }
-            #result-zone { display: block !important; }
-            #input-section { display: none !important; }
-        }
         .fade-in { animation: fadeIn .3s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         .key-saved-badge {
@@ -114,7 +107,7 @@
                     <label class="block text-sm font-medium text-warm-700">AI 模型</label>
                     <select id="model-select" class="w-full px-3 py-2.5 text-sm" onchange="onModelChange()">
                         <option value="gemini">Gemini 3.5 Flash（Google）</option>
-                        <option value="glm4">GLM-4-Flash（智譜AI）</option>
+                        <option value="glm4">GLM-4V-Flash（智譜AI）</option>
                     </select>
                 </div>
                 <div class="space-y-1.5">
@@ -131,7 +124,8 @@
                             placeholder="貼上您的 API 金鑰…"
                             oninput="onApiKeyInput()">
                         <button onclick="toggleKeyVisibility()" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" title="顯示/隱藏">
-                            <i data-lucide="eye" class="w-4 h-4" id="eye-icon"></i>
+                            <svg id="icon-eye" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.04 12.32a1 1 0 010-.64C3.42 7.51 7.36 4.5 12 4.5s8.58 3.01 9.96 7.18a1 1 0 010 .64C20.58 16.49 16.64 19.5 12 19.5s-8.58-3.01-9.96-7.18z"/><circle cx="12" cy="12" r="3"/></svg>
+                            <svg id="icon-eye-off" class="w-4 h-4 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18M10.58 10.58a3 3 0 104.24 4.24M9.36 5.34A9.7 9.7 0 0112 4.5c4.64 0 8.58 3.01 9.96 7.18a1 1 0 010 .64 13.4 13.4 0 01-2.13 3.43M6.18 6.18A13.4 13.4 0 002.04 11.68a1 1 0 000 .64C3.42 16.49 7.36 19.5 12 19.5c1.34 0 2.62-.25 3.8-.71"/></svg>
                         </button>
                     </div>
                     <p class="text-xs text-gray-400" id="api-key-hint">金鑰儲存於本機瀏覽器，不會傳至任何伺服器</p>
@@ -284,7 +278,7 @@
                 hint: '前往 aistudio.google.com 申請免費金鑰',
             },
             glm4: {
-                label: 'GLM-4-Flash（智譜AI）',
+                label: 'GLM-4V-Flash（智譜AI）',
                 keyLabel: '智譜 API 金鑰',
                 placeholder: '智譜開放平台申請的金鑰…',
                 hint: '前往 open.bigmodel.cn 申請金鑰',
@@ -327,10 +321,9 @@
 
         function toggleKeyVisibility() {
             keyVisible = !keyVisible;
-            const input = document.getElementById('api-key');
-            input.type = keyVisible ? 'text' : 'password';
-            document.getElementById('eye-icon').setAttribute('data-lucide', keyVisible ? 'eye-off' : 'eye');
-            lucide.createIcons();
+            document.getElementById('api-key').type = keyVisible ? 'text' : 'password';
+            document.getElementById('icon-eye').classList.toggle('hidden', keyVisible);
+            document.getElementById('icon-eye-off').classList.toggle('hidden', !keyVisible);
         }
 
         // ── File upload handlers ───────────────────────────────────────
@@ -384,6 +377,11 @@
             if (!excelTextData) return showAlert('請先上傳會計分類帳（Excel）');
             if (!bankFile) return showAlert('請先上傳銀行流水（PDF 或圖片）');
 
+            const isPdf = bankFile.type === 'application/pdf' || bankFile.name.toLowerCase().endsWith('.pdf');
+            if (model === 'glm4' && isPdf) {
+                return showAlert('GLM-4V-Flash 不支援 PDF，請將銀行流水轉為 PNG / JPG 圖片，或改用 Gemini');
+            }
+
             const modelLabel = MODEL_META[model].label;
             document.getElementById('txt-model').textContent = modelLabel;
             document.getElementById('report-title').textContent = '對帳差異報告';
@@ -434,7 +432,7 @@
                             <div class="flex flex-col items-center gap-2">
                                 <i data-lucide="alert-circle" class="w-6 h-6 text-red-400"></i>
                                 <p class="text-sm font-medium text-red-600">執行失敗</p>
-                                <p class="text-xs text-gray-500 max-w-sm">${err.message}</p>
+                                <p class="text-xs text-gray-500 max-w-sm">${escapeHtml(err.message)}</p>
                                 <p class="text-xs text-gray-400 mt-1">請確認 API 金鑰正確，以及上傳的文件格式有效。</p>
                             </div>
                         </td>
@@ -494,7 +492,7 @@ ${ledgerCsv}
         async function callGLM(apiKey, dataUrl, prompt) {
             const url = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
             const payload = {
-                model: 'glm-4-flash',
+                model: 'glm-4v-flash',
                 messages: [{ role: 'user', content: [
                     { type: 'image_url', image_url: { url: dataUrl } },
                     { type: 'text', text: prompt }
@@ -515,6 +513,12 @@ ${ledgerCsv}
             }
             const data = await res.json();
             return parseJsonSafe(data.choices[0].message.content);
+        }
+
+        function escapeHtml(str) {
+            return String(str ?? '').replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[c]));
         }
 
         function parseJsonSafe(text) {
@@ -567,23 +571,26 @@ ${ledgerCsv}
                 return;
             }
 
-            data.unmatched_items.forEach((item, i) => {
+            data.unmatched_items.forEach(item => {
                 const isBank = item.source === 'Bank';
-                const amt = Number(item.amount);
+                // AI 可能回傳 "1,000" 或 "$500" 等字串格式
+                const amt = Number(String(item.amount).replace(/[^0-9.\-]/g, ''));
                 const amtClass = amt < 0 ? 'text-red-600' : 'text-emerald-600';
-                const amtStr = (amt < 0 ? '−' : '+') + '$' + Math.abs(amt).toLocaleString();
+                const amtStr = isNaN(amt)
+                    ? escapeHtml(item.amount)
+                    : (amt < 0 ? '−' : '+') + '$' + Math.abs(amt).toLocaleString();
                 const row = document.createElement('tr');
                 row.className = 'row-hover transition-colors';
                 row.innerHTML = `
-                    <td class="px-5 py-4 font-mono text-xs text-gray-500 whitespace-nowrap">${item.date || '—'}</td>
+                    <td class="px-5 py-4 font-mono text-xs text-gray-500 whitespace-nowrap">${escapeHtml(item.date) || '—'}</td>
                     <td class="px-5 py-4 font-semibold ${amtClass} whitespace-nowrap">${amtStr}</td>
-                    <td class="px-5 py-4 text-gray-700 max-w-xs">${item.description || '—'}</td>
+                    <td class="px-5 py-4 text-gray-700 max-w-xs">${escapeHtml(item.description) || '—'}</td>
                     <td class="px-5 py-4">
                         <span class="status-pill ${isBank ? 'pill-bank' : 'pill-ledger'}">
                             ${isBank ? '銀行流水' : '分類帳'}
                         </span>
                     </td>
-                    <td class="px-5 py-4 text-gray-600 text-xs leading-relaxed border-l-2 border-clay-500/30 bg-amber-50/40">${item.reason || '—'}</td>
+                    <td class="px-5 py-4 text-gray-600 text-xs leading-relaxed border-l-2 border-clay-500/30 bg-amber-50/40">${escapeHtml(item.reason) || '—'}</td>
                 `;
                 tbody.appendChild(row);
             });
